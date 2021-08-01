@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 import re
@@ -54,9 +54,6 @@ class Echo(object):
     def clear(cls):
         with open(cls.PATH, "w") as fo:
             fo.write('\n')
-
-class WriteOutputFile(Echo):
-    PATH = None
 
 # --------------------------------------------------------------------------- #
 # - Colors
@@ -223,235 +220,6 @@ class Keys(object):
     TAB_NEXT = (ord('.'),)
     DUMP_PAK = (ord('D'),)
     EDIT_PAK = (ord('E'),)
-
-class OzHelper(object):
-
-    ORGANIZATION = 'LEI'
-    APPLICATION = 'ozzerGuiKonsole'
-    AREA_PROJECTS = ['avtr']
-    USE_QSETTINGS = True
-
-    def __init__(self):
-
-        self.addPaks = []
-        self.removePaks = []
-        self.myPaks = []
-        self.ozmode = 'oz'
-        self.tabName = 'oz'
-        self.ozStash = []
-        self.oz = None
-
-        self._loadSettings()
-        self._loadStash()
-
-    # - Class Helpers ------------------------------------------------------- #
-
-    def _getQSettings(self, group):
-
-        return {}
-
-    def _saveQSettings(self, settingsToSave, group):
-        """settings should be json serialize-able"""
-        return
-
-    def _loadSettings(self):
-        uiData = self._getQSettings('UI')
-        for key, value in uiData.items():
-            setattr(self, key, value)
-
-    def _loadStash(self):
-        stashData = self._getQSettings('builderUI')
-        self.ozStash = [json.loads(i) for i in stashData]
-
-    def _getSettingsDict(self):
-        """ gets current settings as dict"""
-
-        return copy.deepcopy(dict(
-            addPaks=self.addPaks,
-            removePaks=self.removePaks,
-            ozmode=self.ozmode,
-            tabName=self.tabName,
-            myPaks=self.myPaks))
-
-    @staticmethod
-    def _getAppVersionsUnsorted(app):
-
-        for i in []:
-            yield True
-
-    # - Oz Helpers ---------------------------------------------------------- #
-
-    @classmethod
-    def getAllAreas(cls):
-        areas = []
-        return areas
-
-    @staticmethod
-    def getPakApp(pakNameVersion):
-        """ gets the pak name for a pak-version string
-        eg. "Gazebo-0.0.0" would return "Gazebo"
-        """
-        return 'wat'
-
-    @classmethod
-    def getAppVersions(cls, app):
-        def keyfunc(string):
-            string = string.replace('-', '.')
-            string = [i.zfill(4) for i in string.split('.')]
-            return ''.join(string)
-        if app:
-            return sorted(list(cls._getAppVersionsUnsorted(app)), key=keyfunc)
-
-    @classmethod
-    def pakDump(cls, inputPak):
-        """Dump the contents of specified App Versions to JSON"""
-
-    @classmethod
-    def savePakFromJson(cls, newJsonStr):
-        """Save pak from string
-        Returns:
-            False if no error otherwise returns the error
-        """
-
-    # - Tool Methods -------------------------------------------------------- #
-
-    def saveCurrentSettings(self):
-        """ updates qsettings with current env"""
-        self._saveQSettings(self._getSettingsDict(), 'UI')
-
-    def getOzCommand(self, settingsDict=None, quiet=False):
-        """returns current env as a runnable command"""
-
-        settingsDict = settingsDict or self._getSettingsDict()
-
-        ozmode = settingsDict.get('ozmode', 'oz')
-        addPaks = settingsDict.get('addPaks', [])
-        removePaks = settingsDict.get('removePaks', [])
-        tabName = settingsDict.get('tabName', 'Unnamed')
-
-        addText = ' --add '.join(addPaks)
-        addText = ' --add ' + addText if addText else ''
-        removeText = ' --remove '.join(removePaks)
-        removeText = ' --remove ' + removeText if removeText else ''
-        qstring = ' -q' if quiet else ''
-
-        return tabName, ozmode + qstring + addText + removeText
-
-    def addPak(self, pakNameVersion):
-        """adds a pack to the current env"""
-        if pakNameVersion:
-            app = self.getPakApp(pakNameVersion)
-            addApps = [self.getPakApp(p) for p in self.addPaks]
-            removeApps = [self.getPakApp(p) for p in self.removePaks]
-            if app in removeApps:
-                self.removePak(pakNameVersion)
-            if app in addApps:
-                index = addApps.index(app)
-                self.addPaks[index] = pakNameVersion
-            else:
-                self.addPaks.append(pakNameVersion)
-
-    def removePak(self, pakNameVersion):
-        """removes a pak from the current env"""
-        if pakNameVersion in self.addPaks:
-            self.addPaks.remove(pakNameVersion)
-        if pakNameVersion in self.removePaks:
-            self.removePaks.remove(pakNameVersion)
-
-    # - Stash  Methods ------------------------------------------------------ #
-
-    def saveStashedEnvs(self):
-        """ saves stash to qsettings """
-        jsonStash = [json.dumps(o) for o in self.ozStash]
-        self._saveQSettings(jsonStash, 'builderUI')
-
-    def getStashStrings(self):
-        """ returns a list of stashed envs printable """
-        if not self.ozStash:
-            return []
-        results = []
-        cmds = [self.getOzCommand(i) for i in self.ozStash]
-        _max = max([len(i) for i, j in cmds])
-        fmt = '{:>2} {:%s} | {}' % _max
-        for i, (name, cmd) in enumerate(cmds):
-            results.append(fmt.format(i, name, cmd))
-        return results
-
-    def loadStashedEnv(self, index):
-        """ updates current env with stashed index """
-
-        if index is None:
-            return
-
-        validKeys = ['addPaks', 'removePaks', 'myPaks', 'ozmode', 'tabName']
-        for key, value in self.ozStash[index].items():
-            if key in validKeys:
-                setattr(self, key, copy.deepcopy(value))
-
-    def addStashedEnv(self):
-        """ saves current env to stash list """
-        self.ozStash.append(self._getSettingsDict())
-
-    def updatedStashedEnv(self, index):
-        """ saves current env to stash index """
-
-        if index is None:
-            return
-
-        self.ozStash[index] = self._getSettingsDict()
-
-    def insertStashedEnv(self, index):
-        """ insert current env at stash index """
-        self.ozStash.insert(index, self._getSettingsDict())
-
-    def popStashedEnv(self, index):
-        """ removes a stash index """
-        return self.ozStash.pop(index)
-
-    # - Other --------------------------------------------------------------- #
-
-    def parseString(self, string):
-        """parse a command line string"""
-        import argparse
-        string = [o for o in re.findall('\S+', string) if not o == 'oz']
-        parser = argparse.ArgumentParser()
-        parser.add_argument('area', nargs='*', action='store', default='')
-        parser.add_argument('-a', '--add', action='append', default=[])
-        parser.add_argument('-r', '--remove', action='append', default=[])
-        result = parser.parse_args(string)
-        if len(result.area) > 1:
-            Echo('Too many areas', result.area)
-            return
-        self.ozmode = 'oz ' + result.area[0] if result.area else self.ozmode
-        self.addPaks = result.add
-        self.removePaks = result.remove
-
-    def envInfo(self, ozCommand=None):
-        """ get the paks for the current env
-
-        executes bash interactively in a subshell and runs the current oz
-        command, this is slow but it seems it's the only reliable way to expand
-        our LEI aliases.
-
-        ozCommand(string):
-            a string that you would put on the shell such as "laboz", if None,
-            the current class env will be used.
-
-        Returns:
-            a list of app-version (pak) strings
-
-        """
-        name, ozcmd = self.getOzCommand()
-        cmd = ozcmd + ' > /dev/null && echo $_OZ_ALL'
-        pipes = subprocess.Popen(
-            ['/bin/bash', '-i', '-c', cmd],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = pipes.communicate()
-        if not '[ERROR]' in std_err and pipes.returncode == 0:
-            return std_out.strip().split(',')
-        else:  # an error happend
-            std_err = '\n'.join(textwrap.wrap(std_err))
-            raise RuntimeError(std_err)
 
 def stripRmItmPrefix(string):
     return string
@@ -1033,65 +801,6 @@ class ScrollWid(Widget):
             curses.ungetch(Keys.UP[0])
         elif bstate == Keys.KEY_WHEEL_DOWN:
             curses.ungetch(Keys.DOWN[0])
-
-class ScrollWidU(ScrollWid):
-    """ crapppy copy of scroll wid, allows for underlineing of specific chars
-    Todo make less crapy
-    """
-
-    def setItems(self, itemList=None, itemFmt=None):
-
-        itemList = self._items if itemList is None else itemList
-        self._itemFmt = itemFmt
-        super(ScrollWidU, self).setItems(itemList=itemList)
-        if self._itemFmt is None:
-            return
-
-        hl = Color.HIGHLIGHT.pair if self.focus else Color.SELECTED.pair
-        for i, thing in enumerate(itemList):
-            color = hl if i == self._scrollIndex else Color.TEXT.pair
-            self.addstr(i, 0, thing, itemFmt[i], color)
-
-    def addstr(self, y, x, string, fmt, color):
-        self.pad.move(y, x)
-        cu = color | curses.A_UNDERLINE
-        for ch, f in zip(list(string), list(fmt)):
-            c = cu if f == '_' else color
-            self.pad.addch(str(ch), c)
-
-    def draw(self, onlyfocus=False):
-        super(ScrollWidU, self).draw(onlyfocus=onlyfocus)
-        if self._itemFmt is None:
-            return
-        if self.focus:
-            color = Color.HIGHLIGHT.pair | curses.A_REVERSE
-        else:
-            color = Color.TEXT.pair
-        # if self._visibleItems:
-        string = self._visibleItems[self._scrollIndex]
-        fmt = self._itemFmt[self._scrollIndex]
-        self.addstr(self._scrollIndex, 0, string, fmt, color)
-
-    def scroll(self, amount):
-        super(ScrollWidU, self).scroll(amount)
-        if self._itemFmt is None:
-            return
-        string = self._visibleItems[self._previousIndex]
-        fmt = self._itemFmt[self._previousIndex]
-        self.addstr(self._previousIndex, 0, string, fmt, Color.TEXT.pair)
-        if self.focus:
-            color = Color.HIGHLIGHT.pair | curses.A_REVERSE
-        else:
-            color = Color.SELECTED.pair | curses.A_REVERSE
-        string = self._visibleItems[self._scrollIndex]
-        fmt = self._itemFmt[self._scrollIndex]
-        self.addstr(self._scrollIndex, 0, string, fmt, color)
-        self.doRefresh()
-
-    def processKeypress(self, ch):
-        if ch in Keys.FIND:
-            return
-        super(ScrollWidU, self).processKeypress(ch)
 
 class TextBox(Widget):
 
@@ -1802,37 +1511,16 @@ class MainWindow(object):
         curses.noecho()
         curses.cbreak()
 
-    def editPakInEditor(self):
-
-        return
-
-        # - Refresh Screen ----------------------------------------------------
-        self.draw(refresh=True, erase=True)
-
     def processKeypress(self, ch):
 
         if ch in Keys.QUIT:
             self.close()
-
-        # elif ch in Keys.EXECUTE:
-            # self.pakWin.bottomWid._popupChooseProgram()
-            # self.draw(refresh=True)
-
-        # elif ch in Keys.SET_MODE:
-            # self.pakWin.bottomWid._popupChooseOz()
-            # self.draw(refresh=True)
-
-        # elif ch in Keys.CLEAR_SCREEN:
-            # self.stdscr.clear()
 
         elif ch in Keys.TAB_HELP:
             self.setPage(0)
 
         elif ch in Keys.TAB_CURRENT:
             self.setPage(1)
-
-        elif ch in Keys.EDIT_PAK:
-            self.editPakInEditor()
 
         elif ch in Keys.TAB_PREV:
             i = self.tabs.tabIndex
@@ -1915,7 +1603,6 @@ class MainWindow(object):
             print msg
 
 if __name__ == '__main__':
-    # print "\033k{}\033\\".format('ozz')
     try:
         MainWindow.appStart()
     except KeyboardInterrupt:
